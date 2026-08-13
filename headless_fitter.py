@@ -323,7 +323,7 @@ def _match_report(matches, sources: Sequence[str], targets: Sequence[str]):
     return {"matches": [asdict(match) for match in matches], "unmatched_source": _unmatched_items(sources, source_indexes), "unmatched_target": _unmatched_items(targets, target_indexes)}
 
 
-def fit_loudly(sources: Sequence[str], targets: Sequence[str], *, minimum_score: int = DEFAULT_MINIMUM_SCORE):
+def fit_loud(sources: Sequence[str], targets: Sequence[str], *, minimum_score: int = DEFAULT_MINIMUM_SCORE):
     """Globally match two lists while using each target at most once."""
     if not 0 <= minimum_score <= 100:
         raise ValueError("minimum_score must be between 0 and 100")
@@ -334,16 +334,24 @@ def fit_loudly(sources: Sequence[str], targets: Sequence[str], *, minimum_score:
     return _match_report(matches, sources, targets)
 
 
-def _silent_candidates(source: str, targets: Sequence[str], minimum_score: int):
+def _quiet_candidates(source: str, targets: Sequence[str], minimum_score: int):
     ranked = rank_candidates(source, targets)
     return [{"candidate": item.target, "score": item.score} for item in ranked if item.score >= minimum_score]
 
 
-def fit_silently(sources: Sequence[str], targets: Sequence[str]):
+def fit_quiet(sources: Sequence[str], targets: Sequence[str]):
     """Map each source to its ranked candidates at or above the score cutoff."""
     return {
-        source: _silent_candidates(source, targets, DEFAULT_MINIMUM_SCORE)
+        source: _quiet_candidates(source, targets, DEFAULT_MINIMUM_SCORE)
         for source in sources
+    }
+
+
+def fit_silent(sources: Sequence[str], targets: Sequence[str]):
+    """Map each source to ranked candidate names without scoring details."""
+    return {
+        source: [item["candidate"] for item in candidates]
+        for source, candidates in fit_quiet(sources, targets).items()
     }
 
 
@@ -413,13 +421,14 @@ def build_report(source_path: str | Path, target_path: str | Path, *, minimum_sc
     sources, targets = load_name_list(source_path), load_name_list(target_path)
     report = {"source_file": str(Path(source_path).resolve()), "target_file": str(Path(target_path).resolve())}
     report.update({"minimum_score": minimum_score, "source_count": len(sources), "target_count": len(targets)})
-    report.update(fit_loudly(sources, targets, minimum_score=minimum_score))
+    report.update(fit_loud(sources, targets, minimum_score=minimum_score))
     return report
 
 
 def _add_path_arguments(parser: argparse.ArgumentParser, project_dir: Path):
-    parser.add_argument("source", nargs="?", default=project_dir / "source_names.yaml", help="Source .json, .yaml, or .yml name list")
-    parser.add_argument("target", nargs="?", default=project_dir / "target_names.json", help="Target .json, .yaml, or .yml name list")
+    reference_dir = project_dir / "reference"
+    parser.add_argument("source", nargs="?", default=reference_dir / "source_names.yaml", help="Source .json, .yaml, or .yml name list")
+    parser.add_argument("target", nargs="?", default=reference_dir / "target_names.json", help="Target .json, .yaml, or .yml name list")
 
 
 def _add_option_arguments(parser: argparse.ArgumentParser):
