@@ -1,0 +1,3 @@
+HTTPS                         https://github.com/cynians/Headless_Fitter.git
+SSH                           git@github.com:cynians/Headless_Fitter.git
+GitHub CLI                    gh repo clone cynians/Headless_Fitter
